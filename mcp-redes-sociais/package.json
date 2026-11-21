@@ -11,7 +11,7 @@
     "start": "node src/index.js",
     "agendador": "node src/agendador-cli.js",
     "auth:tiktok": "node scripts/tiktok-auth.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20"
