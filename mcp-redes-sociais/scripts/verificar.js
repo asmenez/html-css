@@ -2,6 +2,27 @@
 // Testa as credenciais do .env sem publicar nada:  npm run verificar
 import * as ig from "../src/instagram.js";
 import * as tt from "../src/tiktok.js";
+import { getConfig } from "../src/config.js";
+
+// Com o login unificado (token do Facebook), o ID da conta do Instagram é obrigatório.
+// Se faltar, tenta descobrir pelas Páginas/contas que o token enxerga.
+const c = getConfig().instagram;
+if (c.accessToken && c.host === "graph.facebook.com" && !c.userId) {
+  console.log("\nIG_USER_ID está vazio. Procurando contas do Instagram ligadas a este token...");
+  try {
+    const url = `https://graph.facebook.com/${c.version}/me/accounts?fields=name,instagram_business_account{id,username}&access_token=${encodeURIComponent(c.accessToken)}`;
+    const json = await (await fetch(url)).json();
+    if (json.error) throw new Error(json.error.message);
+    const found = (json.data || []).filter((p) => p.instagram_business_account);
+    if (!found.length) console.log("  Nenhuma encontrada. Confira se a conta do Instagram foi atribuída ao token.");
+    for (const p of found) {
+      const a = p.instagram_business_account;
+      console.log(`  @${a.username}: coloque no .env  IG_USER_ID=${a.id}`);
+    }
+  } catch (err) {
+    console.log(`  Não consegui descobrir: ${err.message}`);
+  }
+}
 
 console.log("\nVerificando Instagram...");
 try {
