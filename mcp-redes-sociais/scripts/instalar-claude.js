@@ -16,6 +16,14 @@ function candidateDirs() {
   if (process.platform === "win32") {
     const appData = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+    // Versões novas: %LOCALAPPDATA%\Claude-Data\claude_<id>\claude_desktop_config.json
+    const dataRoot = path.join(localAppData, "Claude-Data");
+    if (fs.existsSync(dataRoot)) {
+      for (const d of fs.readdirSync(dataRoot)) {
+        const full = path.join(dataRoot, d);
+        if (/^claude_/i.test(d) && fs.statSync(full).isDirectory()) dirs.push(full);
+      }
+    }
     dirs.push(path.join(appData, "Claude"));
     // Versão da Microsoft Store guarda a configuração numa pasta virtualizada.
     const packages = path.join(localAppData, "Packages");
