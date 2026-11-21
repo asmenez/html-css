@@ -32,6 +32,7 @@ if (c.accessToken && c.host === "graph.facebook.com" && !c.userId) {
 }
 
 console.log("\nVerificando Instagram...");
+if (c.userId) console.log(`  Usando IG_USER_ID=${c.userId}`);
 try {
   const conta = await ig.accountInfo();
   console.log(`  OK! Conta @${conta.username} (ID ${conta.user_id || conta.id}, ${conta.media_count ?? "?"} posts)`);
@@ -39,6 +40,16 @@ try {
   if (limite?.data?.[0]) console.log(`  Posts via API nas últimas 24h: ${limite.data[0].quota_usage} de ${limite.data[0].config?.quota_total ?? 100}`);
 } catch (err) {
   console.log(`  ERRO: ${err.message}`);
+  if (/\(code 100\)|Object does not exist/.test(err.message) && c.host === "graph.facebook.com") {
+    console.log(`
+  O que conferir:
+  1. IG_USER_ID precisa ser o ID da CONTA DO INSTAGRAM (costuma começar com 1784 e ter 17 dígitos).
+     Não serve o ID do usuário do sistema, do app ou o business_id da barra de endereço.
+     Onde achar: business.facebook.com/settings > Contas > Contas do Instagram > clique na conta.
+  2. A conta do Instagram precisa estar atribuída ao usuário do sistema:
+     Usuários do sistema > Postador > Atribuir ativos > Contas do Instagram > controle total.
+  3. Deixe IG_USER_ID vazio e rode de novo: o programa tenta descobrir o ID sozinho.`);
+  }
 }
 
 console.log("\nVerificando TikTok...");
