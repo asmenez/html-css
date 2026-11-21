@@ -1,0 +1,24 @@
+{
+  "name": "mcp-redes-sociais",
+  "version": "1.0.0",
+  "description": "Servidor MCP para publicar e agendar posts no Instagram e TikTok usando as APIs oficiais.",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "mcp-redes-sociais": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "agendador": "node src/agendador-cli.js",
+    "auth:tiktok": "node scripts/tiktok-auth.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  }
+}
