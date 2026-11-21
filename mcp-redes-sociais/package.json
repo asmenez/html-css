@@ -11,6 +11,7 @@
     "start": "node src/index.js",
     "agendador": "node src/agendador-cli.js",
     "auth:tiktok": "node scripts/tiktok-auth.js",
+    "verificar": "node scripts/verificar.js",
     "test": "node --test"
   },
   "engines": {

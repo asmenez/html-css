@@ -68,7 +68,8 @@ claude mcp add redes-sociais -- node /caminho/completo/mcp-redes-sociais/src/ind
 3. Adicione sua conta como testadora, gere um token com as permissões `instagram_business_basic` e `instagram_business_content_publish`.
 4. Coloque no `.env`:
    - `IG_ACCESS_TOKEN`: token de longa duração (60 dias). O servidor e o agendador **renovam sozinhos** a cada 7 dias, então ele não vence enquanto um deles rodar pelo menos de vez em quando.
-   - `IG_USER_ID`: resultado de `curl "https://graph.instagram.com/v23.0/me?fields=id,username&access_token=SEU_TOKEN"`.
+   - `IG_USER_ID`: opcional com o login do Instagram. Se quiser preencher, use o `user_id` de `https://graph.instagram.com/v23.0/me?fields=user_id,username&access_token=SEU_TOKEN`.
+5. Confira com `npm run verificar`, que testa as credenciais sem publicar nada.
 
 > Se a sua conta é ligada a uma Página do Facebook e você usa o *Facebook Login*, defina `IG_GRAPH_HOST=graph.facebook.com`.
 

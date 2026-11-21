@@ -7,9 +7,10 @@ import { getConfig, readTokens, saveTokens, sleep } from "./config.js";
 
 function cfg() {
   const c = getConfig().instagram;
-  if (!c.accessToken || !c.userId) {
-    throw new Error("Instagram não configurado: defina IG_ACCESS_TOKEN e IG_USER_ID no .env");
-  }
+  if (!c.accessToken) throw new Error("Instagram não configurado: defina IG_ACCESS_TOKEN no .env");
+  // Com login do Instagram, "me" aponta para a própria conta; com login do Facebook o ID é obrigatório.
+  if (!c.userId && c.host === "graph.instagram.com") c.userId = "me";
+  if (!c.userId) throw new Error("Defina IG_USER_ID no .env (obrigatório com IG_GRAPH_HOST=graph.facebook.com)");
   return c;
 }
 
@@ -124,7 +125,9 @@ export async function publishingLimit() {
 }
 
 export async function accountInfo() {
-  return graph("GET", cfg().userId, { fields: "id,username,media_count" });
+  const c = cfg();
+  const fields = c.host === "graph.instagram.com" ? "user_id,username,media_count" : "id,username,media_count";
+  return graph("GET", c.userId, { fields });
 }
 
 /** Renova o token de longa duração (só no modo graph.instagram.com). Válido por +60 dias. */
