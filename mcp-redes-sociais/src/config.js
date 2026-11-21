@@ -62,6 +62,13 @@ export function getConfig() {
       accessToken: t.tiktok_access_token || process.env.TIKTOK_ACCESS_TOKEN || "",
       refreshToken: t.tiktok_refresh_token || process.env.TIKTOK_REFRESH_TOKEN || "",
     },
+    github: {
+      token: process.env.GITHUB_TOKEN || "",
+      repo: process.env.GITHUB_REPO || "asmenez/html-css",
+      branch: process.env.GITHUB_BRANCH || "master",
+      pagesUrl: (process.env.PAGES_URL || "https://asmenez.github.io/html-css/").replace(/\/?$/, "/"),
+    },
+    carrosseisDir: process.env.CARROSSEIS_DIR || "",
     schedulerIntervalSeconds: Number(process.env.SCHEDULER_INTERVAL_SECONDS || 60),
   };
 }

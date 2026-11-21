@@ -3,6 +3,8 @@
 import * as ig from "../src/instagram.js";
 import * as tt from "../src/tiktok.js";
 import { getConfig } from "../src/config.js";
+import * as hosting from "../src/hospedagem.js";
+import * as carrosseis from "../src/carrosseis.js";
 
 // Com o login unificado (token do Facebook), o ID da conta do Instagram é obrigatório.
 // Se faltar, tenta descobrir pelas Páginas/contas que o token enxerga.
@@ -60,6 +62,20 @@ try {
   if (c.privacy_level_options.length === 1 && c.privacy_level_options[0] === "SELF_ONLY") {
     console.log("  Atenção: app ainda não auditado, posts diretos sairão como privados (use o modo rascunho).");
   }
+} catch (err) {
+  console.log(`  ERRO: ${err.message}`);
+}
+console.log("\nVerificando carrosséis...");
+try {
+  const l = carrosseis.listCarousels();
+  console.log(`  OK! Pasta: ${l.pasta_base}`);
+  console.log(`  ${l.carrosseis.length} carrossel(éis) encontrado(s)${l.carrosseis[0] ? `, o mais recente: "${l.carrosseis[0].pasta}"` : ""}`);
+} catch (err) {
+  console.log(`  ERRO: ${err.message}`);
+}
+try {
+  const g = await hosting.checkAccess();
+  console.log(`  OK! GitHub ${g.repo} (branch ${g.branch}) -> ${g.pages}`);
 } catch (err) {
   console.log(`  ERRO: ${err.message}`);
 }

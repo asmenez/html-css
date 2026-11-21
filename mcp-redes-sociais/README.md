@@ -22,6 +22,8 @@ Se você **não** quer usar IA, os mesmos módulos (`src/instagram.js`, `src/tik
 | `tiktok_post_video` | Vídeo no TikTok (arquivo local ou URL), direto ou como rascunho |
 | `tiktok_post_photos` | Carrossel de fotos no TikTok |
 | `post_video_everywhere` | Mesmo vídeo nas duas redes de uma vez |
+| `postar_carrossel` | Carrossel a partir de uma pasta do computador, no Instagram e/ou TikTok |
+| `listar_carrosseis` | Lista as pastas de carrossel disponíveis |
 | `agendar_post` / `listar_agendados` / `cancelar_agendado` | Fila de agendamentos |
 | `status_contas` | Verifica as credenciais e mostra o limite de posts |
 | `tiktok_status` | Status de uma publicação no TikTok |
@@ -94,6 +96,30 @@ claude mcp add redes-sociais -- node /caminho/completo/mcp-redes-sociais/src/ind
 - **Enquanto o app não passa pela auditoria do TikTok, todo post direto sai como privado (`SELF_ONLY`).** Para publicar como público, envie o app para revisão no portal de desenvolvedores. Uma alternativa sem auditoria é `mode: "draft"`: o vídeo vai para a caixa de entrada do app do TikTok e você toca em "Publicar" no celular.
 - `video_url` e fotos (`PULL_FROM_URL`) exigem que o **domínio esteja verificado** no app. Para vídeos, prefira `file_path` (upload direto do arquivo, sem verificação).
 - O TikTok exige que o usuário saiba que está publicando. Não use isto para postar sem consentimento.
+
+## Carrosséis a partir de uma pasta
+
+Defina `CARROSSEIS_DIR` no `.env` com a pasta onde você guarda os carrosséis. Cada **subpasta** é um carrossel:
+
+```
+02. Carrossel Claude/
+├── Aula 5 - Juros compostos/
+│   ├── 1.png
+│   ├── 2.png
+│   ├── ...
+│   └── legenda.txt      (opcional: vira a legenda)
+└── Aula 6 - Reserva de emergência/
+```
+
+- As imagens (JPG, PNG ou WEBP) entram **em ordem de nome**, com 2 antes de 10.
+- São convertidas para JPG com 1080 px de largura, **hospedadas no GitHub Pages** deste repositório (pasta `carrosseis/`) e publicadas. Instagram e TikTok só aceitam fotos por URL pública.
+- Instagram: 2 a 10 imagens, de preferência 1080×1350 (4:5). TikTok: até 35 fotos, com o título vindo da primeira linha da legenda.
+- Diga ao Claude, por exemplo: *"posta o carrossel juros compostos no Instagram e no TikTok"*. O nome pode ser só parte do nome da pasta.
+
+As imagens ficam públicas no site, como ficariam nas redes. Para a hospedagem, crie um token em <https://github.com/settings/personal-access-tokens/new>:
+1. **Repository access:** *Only select repositories*, escolhendo este repositório.
+2. **Permissions → Contents:** *Read and write*.
+3. Coloque o token em `GITHUB_TOKEN` no `.env`.
 
 ## Agendamento
 

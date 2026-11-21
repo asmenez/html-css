@@ -9,6 +9,7 @@ import { actions, runAction } from "./actions.js";
 import * as ig from "./instagram.js";
 import * as tt from "./tiktok.js";
 import * as agenda from "./agendador.js";
+import * as carrosseis from "./carrosseis.js";
 
 const server = new McpServer({ name: "mcp-redes-sociais", version: "1.0.0" });
 
@@ -79,6 +80,15 @@ server.registerTool(
     inputSchema: { limit: z.number().int().min(1).max(20).optional() },
   },
   wrap((args) => tt.metrics(args)),
+);
+
+server.registerTool(
+  "listar_carrosseis",
+  {
+    description: "Lista as pastas de carrossel em CARROSSEIS_DIR (mais recentes primeiro), com número de imagens e se têm legenda.txt.",
+    inputSchema: {},
+  },
+  wrap(() => carrosseis.listCarousels()),
 );
 
 // Agendamento
