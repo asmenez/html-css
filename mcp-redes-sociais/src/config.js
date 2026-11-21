@@ -7,12 +7,23 @@ export const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 // Carrega o .env da raiz do projeto (sem dependências externas).
 const envFile = path.join(ROOT_DIR, ".env");
 if (fs.existsSync(envFile)) {
-  for (const line of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
+  const parsed = {};
+  for (const line of fs.readFileSync(envFile, "utf8").replace(/^\uFEFF/, "").split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/i);
     if (!m || line.trim().startsWith("#")) continue;
-    const value = m[2].replace(/^(['"])(.*)\1$/, "$2");
-    if (process.env[m[1]] === undefined) process.env[m[1]] = value;
+    parsed[m[1]] = m[2].replace(/^(['"])(.*)\1$/, "$2").trim(); // linha repetida: vale a última
   }
+  for (const [k, v] of Object.entries(parsed)) if (process.env[k] === undefined) process.env[k] = v;
+}
+
+/**
+ * Descobre o endereço da API pelo formato do token:
+ * "IG..." = login do Instagram (graph.instagram.com); "EAA..." = login do Facebook/unificado (graph.facebook.com).
+ */
+export function igHostFor(token, configured) {
+  if (/^IG/.test(token)) return "graph.instagram.com";
+  if (/^EA/.test(token)) return "graph.facebook.com";
+  return configured || "graph.instagram.com";
 }
 
 export const DATA_DIR = path.resolve(ROOT_DIR, process.env.DATA_DIR || "./data");
@@ -41,7 +52,7 @@ export function getConfig() {
     instagram: {
       accessToken: t.ig_access_token || process.env.IG_ACCESS_TOKEN || "",
       userId: process.env.IG_USER_ID || "",
-      host: process.env.IG_GRAPH_HOST || "graph.instagram.com",
+      host: igHostFor(t.ig_access_token || process.env.IG_ACCESS_TOKEN || "", process.env.IG_GRAPH_HOST),
       version: process.env.IG_API_VERSION || "v23.0",
     },
     tiktok: {

@@ -176,3 +176,11 @@ test("renovação automática do token do Instagram: no máximo uma tentativa po
   const { readTokens } = await import("../src/config.js");
   assert.equal(readTokens().ig_access_token, "novo");
 });
+
+test("endereço da API do Instagram é descoberto pelo token", async () => {
+  const { igHostFor } = await import("../src/config.js");
+  assert.equal(igHostFor("IGAAx123", "graph.facebook.com"), "graph.instagram.com");
+  assert.equal(igHostFor("EAAGm0PX4", "graph.instagram.com"), "graph.facebook.com");
+  assert.equal(igHostFor("outro", "graph.facebook.com"), "graph.facebook.com");
+  assert.equal(igHostFor("outro", undefined), "graph.instagram.com");
+});

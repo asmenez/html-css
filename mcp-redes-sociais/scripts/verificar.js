@@ -7,6 +7,13 @@ import { getConfig } from "../src/config.js";
 // Com o login unificado (token do Facebook), o ID da conta do Instagram é obrigatório.
 // Se faltar, tenta descobrir pelas Páginas/contas que o token enxerga.
 const c = getConfig().instagram;
+if (c.accessToken) {
+  // Mostra só o começo do token, nunca ele inteiro.
+  const tipo = c.host === "graph.facebook.com" ? "Facebook / login unificado" : "login do Instagram";
+  console.log(`\nToken do Instagram: começa com "${c.accessToken.slice(0, 4)}...", ${c.accessToken.length} caracteres (${tipo})`);
+  if (/\s/.test(c.accessToken)) console.log("  Atenção: o token tem espaço no meio. Cole de novo no .env, numa linha só.");
+  if (c.accessToken.length < 100) console.log("  Atenção: o token parece curto demais. Pode ter sido copiado pela metade.");
+}
 if (c.accessToken && c.host === "graph.facebook.com" && !c.userId) {
   console.log("\nIG_USER_ID está vazio. Procurando contas do Instagram ligadas a este token...");
   try {
