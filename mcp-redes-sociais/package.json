@@ -12,6 +12,7 @@
     "agendador": "node src/agendador-cli.js",
     "auth:tiktok": "node scripts/tiktok-auth.js",
     "verificar": "node scripts/verificar.js",
+    "instalar-claude": "node scripts/instalar-claude.js",
     "test": "node --test"
   },
   "engines": {
