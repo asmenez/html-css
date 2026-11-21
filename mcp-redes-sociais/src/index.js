@@ -58,6 +58,29 @@ server.registerTool(
   }),
 );
 
+server.registerTool(
+  "instagram_metricas",
+  {
+    description:
+      "Métricas do Instagram. Sem media_id: lista os posts recentes com curtidas e comentários. " +
+      "Com media_id: traz visualizações, alcance, salvamentos e compartilhamentos daquele post.",
+    inputSchema: {
+      media_id: z.string().optional(),
+      limit: z.number().int().min(1).max(50).optional(),
+    },
+  },
+  wrap((args) => ig.metrics(args)),
+);
+
+server.registerTool(
+  "tiktok_metricas",
+  {
+    description: "Vídeos recentes do TikTok com visualizações, curtidas, comentários e compartilhamentos (escopo video.list).",
+    inputSchema: { limit: z.number().int().min(1).max(20).optional() },
+  },
+  wrap((args) => tt.metrics(args)),
+);
+
 // Agendamento
 server.registerTool(
   "agendar_post",
@@ -95,7 +118,12 @@ server.registerTool(
 );
 
 const log = (msg) => console.error(`[mcp-redes-sociais] ${msg}`); // stdout é do protocolo MCP
-setInterval(() => agenda.runDue(log).catch((e) => log(e.message)), getConfig().schedulerIntervalSeconds * 1000).unref();
+const tick = async () => {
+  await ig.maybeRefreshToken({ log });
+  await agenda.runDue(log);
+};
+tick().catch((e) => log(e.message));
+setInterval(() => tick().catch((e) => log(e.message)), getConfig().schedulerIntervalSeconds * 1000).unref();
 
 await server.connect(new StdioServerTransport());
 log("servidor iniciado");

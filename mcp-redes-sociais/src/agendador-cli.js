@@ -5,18 +5,21 @@
 //   npm run agendador -- --list  -> mostra a fila
 import { getConfig, sleep } from "./config.js";
 import * as agenda from "./agendador.js";
+import { maybeRefreshToken } from "./instagram.js";
 
 const log = (msg) => console.log(`[${new Date().toLocaleString("pt-BR")}] ${msg}`);
 
 if (process.argv.includes("--list")) {
   console.table(agenda.list().map(({ id, action, run_at, status, note }) => ({ id, action, run_at, status, note })));
 } else if (process.argv.includes("--once")) {
+  await maybeRefreshToken({ log });
   const r = await agenda.runDue(log);
   log(`${r.length} post(s) processado(s).`);
 } else {
   const interval = getConfig().schedulerIntervalSeconds * 1000;
   log(`Agendador rodando (verifica a cada ${interval / 1000}s). Ctrl+C para sair.`);
   for (;;) {
+    await maybeRefreshToken({ log });
     await agenda.runDue(log).catch((e) => log(`Erro: ${e.message}`));
     await sleep(interval);
   }

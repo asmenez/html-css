@@ -16,8 +16,8 @@ Se você **não** quer usar IA, os mesmos módulos (`src/instagram.js`, `src/tik
 | Ferramenta | O que faz |
 |---|---|
 | `instagram_post_image` | Foto no feed |
-| `instagram_post_reel` | Reel (vídeo) |
-| `instagram_post_story` | Story (foto ou vídeo) |
+| `instagram_post_reel` | Reel (vídeo de URL pública **ou arquivo local**) |
+| `instagram_post_story` | Story (foto ou vídeo, vídeo também de arquivo local) |
 | `instagram_post_carousel` | Carrossel de 2 a 10 fotos/vídeos |
 | `tiktok_post_video` | Vídeo no TikTok (arquivo local ou URL), direto ou como rascunho |
 | `tiktok_post_photos` | Carrossel de fotos no TikTok |
@@ -25,7 +25,9 @@ Se você **não** quer usar IA, os mesmos módulos (`src/instagram.js`, `src/tik
 | `agendar_post` / `listar_agendados` / `cancelar_agendado` | Fila de agendamentos |
 | `status_contas` | Verifica as credenciais e mostra o limite de posts |
 | `tiktok_status` | Status de uma publicação no TikTok |
-| `renovar_tokens` | Renova os tokens de acesso |
+| `instagram_metricas` | Posts recentes com curtidas/comentários; com `media_id`, visualizações, alcance, salvamentos |
+| `tiktok_metricas` | Vídeos recentes com visualizações, curtidas, comentários e compartilhamentos |
+| `renovar_tokens` | Renova os tokens manualmente (normalmente não é preciso, veja abaixo) |
 
 ## Instalação
 
@@ -36,7 +38,7 @@ cp .env.example .env   # e preencha as credenciais (veja abaixo)
 npm test               # testes offline, sem tocar nas APIs
 ```
 
-Requer Node.js 18.17 ou mais recente.
+Requer Node.js 20 ou mais recente.
 
 ### Conectar ao Claude
 
@@ -65,20 +67,21 @@ claude mcp add redes-sociais -- node /caminho/completo/mcp-redes-sociais/src/ind
 2. Em <https://developers.facebook.com>, crie um app do tipo **Business** e adicione o produto **Instagram** → *API setup with Instagram login*.
 3. Adicione sua conta como testadora, gere um token com as permissões `instagram_business_basic` e `instagram_business_content_publish`.
 4. Coloque no `.env`:
-   - `IG_ACCESS_TOKEN`: token de longa duração (60 dias). A ferramenta `renovar_tokens` estende o prazo.
+   - `IG_ACCESS_TOKEN`: token de longa duração (60 dias). O servidor e o agendador **renovam sozinhos** a cada 7 dias, então ele não vence enquanto um deles rodar pelo menos de vez em quando.
    - `IG_USER_ID`: resultado de `curl "https://graph.instagram.com/v23.0/me?fields=id,username&access_token=SEU_TOKEN"`.
 
 > Se a sua conta é ligada a uma Página do Facebook e você usa o *Facebook Login*, defina `IG_GRAPH_HOST=graph.facebook.com`.
 
 **Limitações do Instagram:**
-- A mídia precisa estar numa **URL pública HTTPS**, porque a Meta baixa o arquivo. Pode ser GitHub Pages (este repositório já usa), Cloudinary, S3, Google Cloud Storage etc.
+- **Vídeos** (Reels, Stories, itens de carrossel) podem ser enviados direto do computador com `file_path`.
+- **Imagens** precisam estar numa **URL pública HTTPS**, porque a Meta baixa o arquivo. Pode ser GitHub Pages (este repositório já usa), Cloudinary, S3, Google Cloud Storage etc.
 - Imagens em **JPEG**. Reels em MP4/MOV (H.264, até 15 min).
 - Limite de **100 posts por 24h** por conta via API (`status_contas` mostra o uso).
 
 ### TikTok
 
 1. Em <https://developers.tiktok.com>, crie um app e adicione os produtos **Login Kit** e **Content Posting API** (ative *Direct Post*).
-2. Escopos: `user.info.basic`, `video.publish`, `video.upload`.
+2. Escopos: `user.info.basic`, `video.publish`, `video.upload` e `video.list` (para as métricas).
 3. Cadastre um *Redirect URI* (ex.: `https://seusite.com/callback`; a página não precisa existir de verdade).
 4. Preencha `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` e `TIKTOK_REDIRECT_URI` no `.env` e rode:
    ```bash
@@ -106,13 +109,14 @@ Nenhuma das duas APIs tem agendamento nativo, então o servidor mantém uma fila
 
 Uma trava de arquivo impede que o servidor e o CLI publiquem o mesmo post duas vezes.
 
+Se um post agendado falhar por **erro temporário** (internet caiu, limite de requisições, instabilidade da Meta ou do TikTok), ele é tentado de novo em 5 e depois em 10 minutos, até 3 tentativas. Erros definitivos (URL inválida, permissão faltando etc.) marcam o post como `failed` na hora, e o motivo aparece em `listar_agendados`.
+
 Exemplo de chamada `agendar_post`:
 ```json
 {
   "action": "post_video_everywhere",
   "run_at": "2026-12-05T18:00:00-03:00",
   "args": {
-    "video_url": "https://asmenez.github.io/html-css/videos/aula5.mp4",
     "file_path": "/home/eu/videos/aula5.mp4",
     "caption": "Aula 5 de CSS 🚀 #html #css #programacao"
   }

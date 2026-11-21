@@ -8,6 +8,14 @@ import { DATA_DIR } from "./config.js";
 import { actions, runAction } from "./actions.js";
 
 const QUEUE_FILE = path.join(DATA_DIR, "fila.json");
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MIN = 5; // 5 min, depois 10 min
+
+/** Erros que costumam passar sozinhos: rede, limite de requisições, instabilidade do servidor. */
+export function isTransient(message = "") {
+  return /API (429|5\d\d)|HTTP 5\d\d|fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|rate_limit|spam_risk_too_many|temporarily|Tempo esgotado|\(code (1|2|4|17|32|613)\)/i
+    .test(message);
+}
 const LOCK_FILE = path.join(DATA_DIR, "fila.lock");
 
 function load() {
@@ -83,15 +91,22 @@ export async function runDue(log = () => {}) {
         Object.assign(jobs.find((j) => j.id === due.id), patch);
         save(jobs);
       };
-      update({ status: "running", started_at: new Date().toISOString() });
-      log(`Publicando ${due.id} (${due.action})...`);
+      const attempts = (due.attempts || 0) + 1;
+      update({ status: "running", attempts, started_at: new Date().toISOString() });
+      log(`Publicando ${due.id} (${due.action}), tentativa ${attempts}/${MAX_ATTEMPTS}...`);
       try {
         const result = await runAction(due.action, due.args);
         update({ status: "done", result, finished_at: new Date().toISOString() });
         done.push({ id: due.id, status: "done", result });
       } catch (err) {
-        update({ status: "failed", error: err.message, finished_at: new Date().toISOString() });
-        done.push({ id: due.id, status: "failed", error: err.message });
+        if (attempts < MAX_ATTEMPTS && isTransient(err.message)) {
+          const run_at = new Date(Date.now() + RETRY_DELAY_MIN * attempts * 60_000).toISOString();
+          update({ status: "pending", run_at, error: err.message });
+          done.push({ id: due.id, status: "retry", run_at, error: err.message });
+        } else {
+          update({ status: "failed", error: err.message, finished_at: new Date().toISOString() });
+          done.push({ id: due.id, status: "failed", error: err.message });
+        }
       }
       log(`→ ${due.id}: ${done.at(-1).status}`);
     }

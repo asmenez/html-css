@@ -156,6 +156,13 @@ export async function publishPhotos({
   return wait ? { ...result, ...(await waitForPublish(data.publish_id)) } : result;
 }
 
+/** Vídeos recentes do perfil com visualizações, curtidas etc. (requer escopo video.list). */
+export async function metrics({ limit = 10 } = {}) {
+  const fields = "id,title,create_time,share_url,view_count,like_count,comment_count,share_count,duration";
+  const data = await api(`/v2/video/list/?fields=${fields}`, { max_count: Math.min(limit, 20) });
+  return data.videos;
+}
+
 export async function publishStatus(publish_id) {
   return api("/v2/post/publish/status/fetch/", { publish_id });
 }

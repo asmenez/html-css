@@ -90,3 +90,89 @@ test("agendador executa posts vencidos uma única vez", async () => {
   assert.equal(agenda.cancel(future.id).status, "cancelled");
   assert.throws(() => agenda.schedule({ action: "x", args: {}, run_at: "2030-01-01" }), /desconhecida/);
 });
+
+test("instagram_post_reel com arquivo local usa upload resumível", async () => {
+  const file = path.join(process.env.DATA_DIR, "reel.mp4");
+  fs.writeFileSync(file, Buffer.alloc(2048, 2));
+  let upload;
+  globalThis.fetch = async (url, init = {}) => {
+    const u = new URL(url);
+    if (u.pathname.endsWith("/1784/media")) {
+      const b = new URLSearchParams(init.body);
+      assert.equal(b.get("upload_type"), "resumable");
+      assert.equal(b.get("media_type"), "REELS");
+      assert.equal(b.get("video_url"), null);
+      return json({ id: "c9", uri: "https://rupload.facebook.com/ig-api-upload/v23.0/c9" });
+    }
+    if (u.host === "rupload.facebook.com") {
+      upload = { path: u.pathname, headers: init.headers, size: init.body.size };
+      return json({ success: true });
+    }
+    if (u.pathname.endsWith("/c9")) return json({ status_code: "FINISHED" });
+    if (u.pathname.endsWith("/media_publish")) return json({ id: "m9" });
+    return json({ permalink: "https://instagram.com/reel/z" });
+  };
+  const r = await runAction("instagram_post_reel", { file_path: file, caption: "reel local" });
+  assert.equal(r.media_id, "m9");
+  assert.equal(upload.path, "/ig-api-upload/v23.0/c9");
+  assert.equal(upload.headers.Authorization, "OAuth ig-token");
+  assert.equal(upload.headers.file_size, "2048");
+  assert.equal(upload.size, 2048);
+});
+
+test("agendador tenta de novo em erro temporário e desiste em erro definitivo", async () => {
+  globalThis.fetch = async () => json({ error: { message: "Service temporarily unavailable", code: 2 } }, 503);
+  const job = agenda.schedule({ action: "instagram_post_image", args: { image_url: "https://ex.com/d.jpg" }, run_at: "2020-01-01T00:00:00Z" });
+  const [r1] = await agenda.runDue();
+  assert.equal(r1.status, "retry");
+  assert.ok(new Date(r1.run_at) > new Date());
+  assert.equal(agenda.list({ status: "pending" }).find((j) => j.id === job.id).attempts, 1);
+
+  globalThis.fetch = async () => json({ error: { message: "Invalid parameter", code: 100 } }, 400);
+  const bad = agenda.schedule({ action: "instagram_post_image", args: { image_url: "https://ex.com/e.jpg" }, run_at: "2020-01-01T00:00:00Z" });
+  const results = await agenda.runDue();
+  assert.equal(results.find((x) => x.id === bad.id).status, "failed");
+  agenda.cancel(job.id);
+});
+
+test("isTransient classifica erros", () => {
+  assert.ok(agenda.isTransient("Instagram API 500: erro"));
+  assert.ok(agenda.isTransient("TypeError: fetch failed"));
+  assert.ok(agenda.isTransient("Instagram API 400: Application request limit reached (code 4)"));
+  assert.ok(!agenda.isTransient("Instagram API 400: Invalid parameter (code 100)"));
+  assert.ok(!agenda.isTransient("privacy_level não permitido"));
+});
+
+test("métricas do Instagram e do TikTok", async () => {
+  globalThis.fetch = async (url, init = {}) => {
+    const u = new URL(url);
+    if (u.host === "open.tiktokapis.com") {
+      assert.match(u.search, /view_count/);
+      return json({ data: { videos: [{ id: "v1", view_count: 42 }] }, error: { code: "ok" } });
+    }
+    if (u.pathname.endsWith("/m1/insights")) {
+      assert.match(u.searchParams.get("metric"), /views/);
+      return json({ data: [{ name: "views", values: [{ value: 120 }] }, { name: "reach", values: [{ value: 90 }] }] });
+    }
+    if (u.pathname.endsWith("/m1")) return json({ id: "m1", media_product_type: "REELS", like_count: 7 });
+    if (u.pathname.endsWith("/1784/media")) return json({ data: [{ id: "m1" }] });
+    throw new Error("inesperado " + u);
+  };
+  const ig = await import("../src/instagram.js");
+  const tt = await import("../src/tiktok.js");
+  assert.deepEqual(await ig.metrics(), [{ id: "m1" }]);
+  const m = await ig.metrics({ media_id: "m1" });
+  assert.deepEqual(m.insights, { views: 120, reach: 90 });
+  assert.deepEqual(await tt.metrics(), [{ id: "v1", view_count: 42 }]);
+});
+
+test("renovação automática do token do Instagram: no máximo uma tentativa por dia", async () => {
+  const ig = await import("../src/instagram.js");
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return json({ access_token: "novo", expires_in: 5184000 }); };
+  assert.equal((await ig.maybeRefreshToken()).expires_in_days, 60);
+  assert.equal(await ig.maybeRefreshToken(), null); // recém-renovado
+  assert.equal(calls, 1);
+  const { readTokens } = await import("../src/config.js");
+  assert.equal(readTokens().ig_access_token, "novo");
+});

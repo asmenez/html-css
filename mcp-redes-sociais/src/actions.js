@@ -17,9 +17,10 @@ export const actions = {
     run: ig.publishImage,
   },
   instagram_post_reel: {
-    description: "Publica um Reel no Instagram a partir de uma URL pública de vídeo (MP4/MOV, 3s–15min).",
+    description: "Publica um Reel no Instagram (MP4/MOV, 3s–15min) a partir de uma URL pública OU de um arquivo local.",
     schema: {
-      video_url: url,
+      video_url: url.optional(),
+      file_path: z.string().optional().describe("Caminho de um vídeo local (alternativa a video_url)"),
       caption: z.string().max(2200).optional(),
       cover_url: url.optional().describe("Imagem de capa (opcional)"),
       thumb_offset: z.number().int().optional().describe("Milissegundo do vídeo usado como capa"),
@@ -28,14 +29,22 @@ export const actions = {
     run: ig.publishReel,
   },
   instagram_post_story: {
-    description: "Publica um Story no Instagram (imagem OU vídeo em URL pública).",
-    schema: { image_url: url.optional(), video_url: url.optional() },
+    description: "Publica um Story no Instagram: imagem (URL pública) ou vídeo (URL pública ou arquivo local).",
+    schema: {
+      image_url: url.optional(),
+      video_url: url.optional(),
+      file_path: z.string().optional().describe("Vídeo local"),
+    },
     run: ig.publishStory,
   },
   instagram_post_carousel: {
     description: "Publica um carrossel (2 a 10 fotos/vídeos) no Instagram.",
     schema: {
-      items: z.array(z.object({ type: z.enum(["image", "video"]), url })).min(2).max(10),
+      items: z.array(z.object({
+        type: z.enum(["image", "video"]),
+        url: url.optional(),
+        file_path: z.string().optional().describe("Só para vídeos: arquivo local no lugar da url"),
+      })).min(2).max(10),
       caption: z.string().max(2200).optional(),
     },
     run: ig.publishCarousel,
@@ -80,17 +89,17 @@ export const actions = {
   post_video_everywhere: {
     description:
       "Publica o mesmo vídeo como Reel no Instagram e como vídeo no TikTok. " +
-      "video_url é usado no Instagram (e no TikTok se file_path não for informado).",
+      "Prefira file_path (arquivo local): funciona nas duas redes sem hospedar o vídeo.",
     schema: {
-      video_url: url.describe("URL pública do vídeo (obrigatória para o Instagram)"),
-      file_path: z.string().optional().describe("Arquivo local para o TikTok (evita verificação de domínio)"),
+      file_path: z.string().optional().describe("Arquivo de vídeo local (recomendado)"),
+      video_url: url.optional().describe("URL pública do vídeo (alternativa a file_path)"),
       caption: z.string().max(2200).optional(),
       tiktok_mode: z.enum(["direct", "draft"]).optional(),
       tiktok_privacy_level: privacy.optional(),
     },
     run: async ({ video_url, file_path, caption, tiktok_mode, tiktok_privacy_level }) => {
       const [instagram, tiktok] = await Promise.allSettled([
-        ig.publishReel({ video_url, caption }),
+        ig.publishReel(file_path ? { file_path, caption } : { video_url, caption }),
         tt.publishVideo({
           ...(file_path ? { file_path } : { video_url }),
           title: caption, mode: tiktok_mode, privacy_level: tiktok_privacy_level,

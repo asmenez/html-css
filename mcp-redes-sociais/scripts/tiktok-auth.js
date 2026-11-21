@@ -15,7 +15,7 @@ const state = crypto.randomBytes(8).toString("hex");
 const auth = new URL("https://www.tiktok.com/v2/auth/authorize/");
 auth.search = new URLSearchParams({
   client_key: clientKey,
-  scope: "user.info.basic,video.publish,video.upload",
+  scope: "user.info.basic,video.publish,video.upload,video.list",
   response_type: "code",
   redirect_uri: redirectUri,
   state,
