@@ -89,12 +89,16 @@ export const actions = {
   },
   postar_carrossel: {
     description:
-      "Publica um carrossel a partir de uma pasta do computador (subpasta de CARROSSEIS_DIR ou caminho completo). " +
-      "As imagens (JPG/PNG/WEBP) entram em ordem de nome, são convertidas para JPG, hospedadas no GitHub Pages " +
-      "e publicadas no Instagram (2 a 10 imagens) e/ou no TikTok (até 35 fotos). " +
-      "Sem 'legenda', usa o legenda.txt da pasta. Use listar_carrosseis para ver as pastas.",
+      "Publica um carrossel com UM comando nas duas redes. Cada rede tem a sua pasta de carrosséis " +
+      "(CARROSSEIS_DIR_INSTAGRAM e CARROSSEIS_DIR_TIKTOK): o carrossel é achado pelo nome em cada uma, " +
+      "e cada rede recebe as imagens da sua própria pasta. As imagens (JPG/PNG/WEBP) entram em ordem de nome, " +
+      "são convertidas para JPG, hospedadas no GitHub Pages e publicadas no Instagram (2 a 10) e/ou no TikTok (até 35). " +
+      "Se a pasta de alguma rede não for achada, nada é publicado. Sem 'legenda', usa o legenda.txt da pasta. " +
+      "Use listar_carrosseis para ver as pastas.",
     schema: {
-      pasta: z.string().describe("Nome da subpasta (pode ser parte do nome) ou caminho completo"),
+      pasta: z.string().describe("Nome do carrossel (pode ser parte do nome), procurado na pasta de cada rede"),
+      pasta_instagram: z.string().optional().describe("Só se o nome for diferente na pasta do Instagram"),
+      pasta_tiktok: z.string().optional().describe("Só se o nome for diferente na pasta do TikTok"),
       redes: z.array(z.enum(["instagram", "tiktok"])).min(1).optional().describe("Padrão: as duas"),
       legenda: z.string().max(2200).optional(),
       titulo_tiktok: z.string().max(90).optional().describe("Padrão: primeira linha da legenda"),

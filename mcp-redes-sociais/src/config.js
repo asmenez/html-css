@@ -68,7 +68,11 @@ export function getConfig() {
       branch: process.env.GITHUB_BRANCH || "master",
       pagesUrl: (process.env.PAGES_URL || "https://asmenez.github.io/html-css/").replace(/\/?$/, "/"),
     },
-    carrosseisDir: process.env.CARROSSEIS_DIR || "",
+    // Uma pasta por rede; CARROSSEIS_DIR vale para as duas quando a específica não existe.
+    carrosseisDirs: {
+      instagram: process.env.CARROSSEIS_DIR_INSTAGRAM || process.env.CARROSSEIS_DIR || "",
+      tiktok: process.env.CARROSSEIS_DIR_TIKTOK || process.env.CARROSSEIS_DIR || "",
+    },
     schedulerIntervalSeconds: Number(process.env.SCHEDULER_INTERVAL_SECONDS || 60),
   };
 }

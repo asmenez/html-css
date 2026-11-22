@@ -68,8 +68,13 @@ try {
 console.log("\nVerificando carrosséis...");
 try {
   const l = carrosseis.listCarousels();
-  console.log(`  OK! Pasta: ${l.pasta_base}`);
-  console.log(`  ${l.carrosseis.length} carrossel(éis) encontrado(s)${l.carrosseis[0] ? `, o mais recente: "${l.carrosseis[0].pasta}"` : ""}`);
+  for (const rede of carrosseis.REDES) {
+    const r = l[rede];
+    if (r.erro) { console.log(`  ERRO (${rede}): ${r.erro}`); continue; }
+    console.log(`  OK! ${rede}: ${r.pasta_base}`);
+    console.log(`      ${r.carrosseis.length} carrossel(éis)${r.carrosseis[0] ? `, o mais recente: "${r.carrosseis[0].pasta}"` : ""}`);
+  }
+  if (l.nas_duas_redes) console.log(`  ${l.nas_duas_redes.length} carrossel(éis) com o mesmo nome nas duas pastas.`);
 } catch (err) {
   console.log(`  ERRO: ${err.message}`);
 }

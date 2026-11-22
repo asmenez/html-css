@@ -99,7 +99,7 @@ claude mcp add redes-sociais -- node /caminho/completo/mcp-redes-sociais/src/ind
 
 ## Carrosséis a partir de uma pasta
 
-Defina `CARROSSEIS_DIR` no `.env` com a pasta onde você guarda os carrosséis. Cada **subpasta** é um carrossel:
+Defina no `.env` a pasta de carrosséis de cada rede: `CARROSSEIS_DIR_INSTAGRAM` e `CARROSSEIS_DIR_TIKTOK`. Se as duas usam a mesma pasta, preencha só `CARROSSEIS_DIR`. Com um comando só, o programa acha o carrossel **pelo nome** em cada pasta, e cada rede recebe as imagens da sua própria pasta. Se o nome não for achado em alguma das pastas, nada é publicado. Quando o nome for diferente entre as pastas, use `pasta_instagram` / `pasta_tiktok`. Cada **subpasta** é um carrossel:
 
 ```
 02. Carrossel Claude/

@@ -85,7 +85,7 @@ server.registerTool(
 server.registerTool(
   "listar_carrosseis",
   {
-    description: "Lista as pastas de carrossel em CARROSSEIS_DIR (mais recentes primeiro), com número de imagens e se têm legenda.txt.",
+    description: "Lista os carrosséis da pasta do Instagram e da pasta do TikTok (mais recentes primeiro), com número de imagens, se têm legenda.txt e quais existem nas duas redes.",
     inputSchema: {},
   },
   wrap(() => carrosseis.listCarousels()),

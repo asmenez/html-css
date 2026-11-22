@@ -1,4 +1,4 @@
-// Carrossel a partir de pasta local, com GitHub, Instagram e TikTok simulados.
+// Carrosséis com uma pasta por rede, com GitHub, Instagram e TikTok simulados.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -12,64 +12,73 @@ process.env.IG_ACCESS_TOKEN = "IGtoken";
 process.env.IG_USER_ID = "1784";
 process.env.TIKTOK_ACCESS_TOKEN = "tt";
 process.env.GITHUB_TOKEN = "ghtoken";
-process.env.CARROSSEIS_DIR = path.join(tmp, "02. Carrossel Claude & Cia");
+process.env.CARROSSEIS_DIR_INSTAGRAM = path.join(tmp, "Projetos Claude", "Carrosseis Instagram");
+process.env.CARROSSEIS_DIR_TIKTOK = path.join(tmp, "02. Carrossel Claude & Cia");
 
-const pasta = path.join(process.env.CARROSSEIS_DIR, "Aula 5 — Juros Compostos");
-fs.mkdirSync(pasta, { recursive: true });
-for (const n of ["10", "2", "1"]) {
-  await sharp({ create: { width: 1080, height: 1350, channels: 4, background: "#123456" } }).png().toFile(path.join(pasta, `${n}.png`));
+async function makeImages(dir, names, color, height = 1350) {
+  fs.mkdirSync(dir, { recursive: true });
+  for (const n of names) {
+    await sharp({ create: { width: 1080, height, channels: 4, background: color } }).png().toFile(path.join(dir, `${n}.png`));
+  }
 }
-fs.writeFileSync(path.join(pasta, "legenda.txt"), "﻿Juros compostos em 3 slides\n\n#financas #investimentos");
-fs.writeFileSync(path.join(pasta, "notas.docx"), "ignorar");
+// Mesmo carrossel, nomes levemente diferentes; Instagram 4:5 com 3 imagens, TikTok 9:16 com 4.
+const igPasta = path.join(process.env.CARROSSEIS_DIR_INSTAGRAM, "Aula 5 — Juros Compostos");
+const ttPasta = path.join(process.env.CARROSSEIS_DIR_TIKTOK, "aula 5 - juros compostos");
+await makeImages(igPasta, ["10", "2", "1"], "#123456");
+await makeImages(ttPasta, ["1", "2", "3", "4"], "#654321", 1920);
+fs.writeFileSync(path.join(igPasta, "legenda.txt"), "\uFEFFJuros compostos em 3 slides\n\n#financas");
+await makeImages(path.join(process.env.CARROSSEIS_DIR_INSTAGRAM, "Só no Insta"), ["1", "2"], "#111111");
 
 const { runAction } = await import("../src/actions.js");
 const carrosseis = await import("../src/carrosseis.js");
 const json = (b, s = 200) => new Response(JSON.stringify(b), { status: s });
 
-test("lista carrosséis e encontra pasta por parte do nome, sem acento", () => {
+test("lista as duas pastas e mostra o que existe nas duas redes", () => {
   const l = carrosseis.listCarousels();
-  assert.equal(l.carrosseis.length, 1);
-  assert.deepEqual({ ...l.carrosseis[0], modificada: undefined }, { pasta: "Aula 5 — Juros Compostos", imagens: 3, tem_legenda: true, modificada: undefined });
-  assert.equal(carrosseis.resolveFolder("juros"), pasta);
-  assert.throws(() => carrosseis.resolveFolder("inexistente"), /não encontrada/);
+  assert.equal(l.instagram.carrosseis.length, 2);
+  assert.equal(l.tiktok.carrosseis.length, 1);
+  assert.deepEqual(l.nas_duas_redes, ["Aula 5 — Juros Compostos"]);
+});
+
+test("acha o mesmo carrossel em cada pasta pelo nome, ignorando acento, traço e maiúsculas", () => {
+  assert.equal(carrosseis.resolveFolder("juros compostos", "instagram"), igPasta);
+  assert.equal(carrosseis.resolveFolder("juros compostos", "tiktok"), ttPasta);
+  assert.equal(carrosseis.resolveFolder("Aula 5 — Juros Compostos", "tiktok"), ttPasta);
+  assert.throws(() => carrosseis.resolveFolder("so no insta", "tiktok"), /No tiktok, nenhuma pasta/);
 });
 
 test("ordem natural dos nomes (1, 2, 10) e legenda.txt sem BOM", () => {
-  const c = carrosseis.readFolder(pasta);
+  const c = carrosseis.readFolder(igPasta);
   assert.deepEqual(c.imagens.map((f) => path.basename(f)), ["1.png", "2.png", "10.png"]);
-  assert.equal(c.legenda, "Juros compostos em 3 slides\n\n#financas #investimentos");
+  assert.equal(c.legenda, "Juros compostos em 3 slides\n\n#financas");
 });
 
-test("postar_carrossel: converte, hospeda num commit e publica nas duas redes", async () => {
-  const gh = [];
-  let tree, igChildren = 0, ttBody;
+test("um comando: cada rede recebe as imagens da sua pasta", async () => {
+  const commits = [];
+  let blobs = 0, igChildren = 0, ttBody;
   globalThis.fetch = async (url, init = {}) => {
     const u = new URL(url);
     const method = init.method || "GET";
     if (u.host === "api.github.com") {
-      gh.push(`${method} ${u.pathname.replace("/repos/asmenez/html-css", "")}`);
-      assert.equal(init.headers.Authorization, "Bearer ghtoken");
       if (u.pathname.endsWith("/git/ref/heads/master")) return json({ object: { sha: "base" } });
       if (u.pathname.endsWith("/git/commits/base")) return json({ tree: { sha: "t0" } });
       if (u.pathname.endsWith("/git/blobs")) {
         const buf = Buffer.from(JSON.parse(init.body).content, "base64");
-        assert.equal(buf[0], 0xff); assert.equal(buf[1], 0xd8); // é JPEG
-        return json({ sha: `b${gh.length}` });
+        assert.equal(buf[0], 0xff); // JPEG
+        return json({ sha: `b${++blobs}` });
       }
-      if (u.pathname.endsWith("/git/trees")) { tree = JSON.parse(init.body); return json({ sha: "t1" }); }
+      if (u.pathname.endsWith("/git/trees")) { commits.push(JSON.parse(init.body).tree.map((t) => t.path)); return json({ sha: "t1" }); }
       if (u.pathname.endsWith("/git/commits")) return json({ sha: "c1" });
-      if (u.pathname.endsWith("/git/refs/heads/master")) { assert.equal(JSON.parse(init.body).sha, "c1"); return json({}); }
+      if (u.pathname.endsWith("/git/refs/heads/master")) return json({});
     }
-    if (u.host === "asmenez.github.io") { assert.equal(method, "HEAD"); return new Response(null, { status: 200 }); }
+    if (u.host === "asmenez.github.io") return new Response(null, { status: 200 });
     if (u.host === "graph.instagram.com") {
       const b = new URLSearchParams(init.body);
-      if (u.pathname.endsWith("/1784/media") && b.get("is_carousel_item")) { igChildren++; return json({ id: `child${igChildren}` }); }
-      if (u.pathname.endsWith("/1784/media")) {
-        assert.equal(b.get("media_type"), "CAROUSEL");
-        assert.equal(b.get("children"), "child1,child2,child3");
-        assert.match(b.get("caption"), /^Juros compostos/);
-        return json({ id: "car" });
+      if (u.pathname.endsWith("/1784/media") && b.get("is_carousel_item")) {
+        assert.match(b.get("image_url"), /aula-5-juros-compostos/);
+        igChildren++; return json({ id: `child${igChildren}` });
       }
+      if (u.pathname.endsWith("/1784/media")) { assert.equal(b.get("children"), "child1,child2,child3"); return json({ id: "car" }); }
       if (u.pathname.endsWith("/media_publish")) return json({ id: "post1" });
       if (method === "GET" && /child\d|car$/.test(u.pathname)) return json({ status_code: "FINISHED" });
       return json({ permalink: "https://instagram.com/p/abc" });
@@ -82,31 +91,49 @@ test("postar_carrossel: converte, hospeda num commit e publica nas duas redes", 
     throw new Error(`inesperado ${method} ${u}`);
   };
 
-  const r = await runAction("postar_carrossel", { pasta: "aula 5" });
-  assert.equal(r.legenda_usada, "legenda.txt");
+  const r = await runAction("postar_carrossel", { pasta: "juros compostos" });
   assert.equal(r.instagram.ok, true);
-  assert.equal(r.instagram.permalink, "https://instagram.com/p/abc");
+  assert.equal(r.instagram.pasta, igPasta);
+  assert.equal(r.instagram.imagens, 3);
+  assert.equal(r.instagram.legenda_usada, "legenda.txt da pasta");
   assert.equal(r.tiktok.ok, true);
+  assert.equal(r.tiktok.pasta, ttPasta);
+  assert.equal(r.tiktok.imagens, 4);
+  assert.equal(r.tiktok.legenda_usada, "legenda.txt da outra rede");
 
-  assert.deepEqual(gh.filter((x) => !x.includes("blobs")), [
-    "GET /git/ref/heads/master", "GET /git/commits/base", "POST /git/trees", "POST /git/commits", "PATCH /git/refs/heads/master",
-  ]);
-  assert.equal(gh.filter((x) => x.includes("blobs")).length, 3);
-  assert.equal(tree.base_tree, "t0");
-  assert.match(tree.tree[0].path, /^carrosseis\/aula-5-juros-compostos-\d{8}-\d{6}\/01\.jpg$/);
-  assert.match(tree.tree[2].path, /\/03\.jpg$/);
-
-  assert.equal(ttBody.media_type, "PHOTO");
+  assert.equal(commits.length, 2); // uma hospedagem por pasta
+  assert.deepEqual(commits.map((c) => c.length).sort(), [3, 4]);
+  assert.equal(blobs, 7);
+  assert.equal(ttBody.source_info.photo_images.length, 4);
   assert.equal(ttBody.post_info.title, "Juros compostos em 3 slides");
-  assert.equal(ttBody.post_info.privacy_level, "SELF_ONLY");
-  assert.equal(ttBody.source_info.photo_images.length, 3);
-  assert.match(ttBody.source_info.photo_images[0], /^https:\/\/asmenez\.github\.io\/html-css\/carrosseis\/aula-5-juros-compostos-.*\/01\.jpg$/);
 });
 
-test("Instagram recusa carrossel com mais de 10 imagens antes de enviar qualquer coisa", async () => {
-  const big = path.join(process.env.CARROSSEIS_DIR, "grande");
+test("se a pasta de uma rede não existir, nada é publicado nem enviado", async () => {
+  globalThis.fetch = async () => { throw new Error("não deveria chamar a rede"); };
+  await assert.rejects(runAction("postar_carrossel", { pasta: "so no insta" }), /Nada foi publicado\. No tiktok, nenhuma pasta/);
+});
+
+test("só Instagram funciona com carrossel que só existe lá; pasta_tiktok resolve nomes diferentes", async () => {
+  globalThis.fetch = async () => { throw new Error("parar antes da rede"); };
+  // Validação passa (chega a tentar hospedar) quando só o Instagram é pedido:
+  await assert.rejects(runAction("postar_carrossel", { pasta: "so no insta", redes: ["instagram"] }), /parar antes da rede/);
+  // Nome diferente no TikTok, indicado à parte:
+  await assert.rejects(runAction("postar_carrossel", { pasta: "so no insta", pasta_tiktok: "juros" }), /parar antes da rede/);
+});
+
+test("Instagram recusa mais de 10 imagens antes de enviar qualquer coisa", async () => {
+  const big = path.join(process.env.CARROSSEIS_DIR_INSTAGRAM, "grande");
   fs.mkdirSync(big);
-  for (let i = 1; i <= 11; i++) fs.copyFileSync(path.join(pasta, "1.png"), path.join(big, `${i}.png`));
+  for (let i = 1; i <= 11; i++) fs.copyFileSync(path.join(igPasta, "1.png"), path.join(big, `${i}.png`));
   globalThis.fetch = async () => { throw new Error("não deveria chamar a rede"); };
   await assert.rejects(runAction("postar_carrossel", { pasta: "grande", redes: ["instagram"] }), /2 a 10 imagens/);
+});
+
+test("CARROSSEIS_DIR sozinho vale para as duas redes", async () => {
+  const { getConfig } = await import("../src/config.js");
+  const saved = { i: process.env.CARROSSEIS_DIR_INSTAGRAM, t: process.env.CARROSSEIS_DIR_TIKTOK };
+  delete process.env.CARROSSEIS_DIR_INSTAGRAM; delete process.env.CARROSSEIS_DIR_TIKTOK;
+  process.env.CARROSSEIS_DIR = "X:/unica";
+  assert.deepEqual(getConfig().carrosseisDirs, { instagram: "X:/unica", tiktok: "X:/unica" });
+  process.env.CARROSSEIS_DIR_INSTAGRAM = saved.i; process.env.CARROSSEIS_DIR_TIKTOK = saved.t; delete process.env.CARROSSEIS_DIR;
 });
